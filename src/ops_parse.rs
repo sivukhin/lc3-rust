@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use crate::ops;
 
 pub struct Parser {
@@ -5,6 +7,11 @@ pub struct Parser {
     pub position: i32,
 }
 
+#[derive(Debug)]
+pub enum ParseError {
+    FixedMismatch { code: u16, segment: Range<i32>, expected: u16, actual: u16 },
+    IllegalOpcode { code: u16 },
+}
 
 impl Parser {
     pub fn unsigned(&mut self, bit_size: i32) -> u16 {
@@ -14,9 +21,9 @@ impl Parser {
         self.position -= bit_size;
         return (self.code >> self.position) & ((1 << bit_size) - 1);
     }
-    pub fn fixed(&mut self, bit_size: i32, expected: u16) -> Result<(), ops::OpParseError> {
+    pub fn fixed(&mut self, bit_size: i32, expected: u16) -> Result<(), ParseError> {
         let actual = self.unsigned(bit_size);
-        return if actual == expected { Ok(()) } else { Err(ops::OpParseError::FixedMismatch { code: self.code, segment: self.position..self.position + bit_size, expected, actual }) };
+        return if actual == expected { Ok(()) } else { Err(ParseError::FixedMismatch { code: self.code, segment: self.position..self.position + bit_size, expected, actual }) };
     }
     pub fn register(&mut self) -> ops::Register {
         return ops::Register(self.unsigned(3) as usize);
@@ -27,7 +34,7 @@ impl Parser {
         let sign = value >> (bit_size - 1);
         return if sign == 1 { value | (u16::MAX << bit_size) } else { value };
     }
-    pub fn argument(&mut self) -> Result<ops::Argument, ops::OpParseError> {
+    pub fn argument(&mut self) -> Result<ops::Argument, ParseError> {
         match self.unsigned(1) {
             1 => Ok(ops::Argument::Immediate(self.signed(5))),
             _ => {
@@ -40,7 +47,7 @@ impl Parser {
 
 impl ops::Operation {
     /// spec: https://www.jmeiners.com/lc3-vm/supplies/lc3-isa.pdf
-    pub fn parse(code: u16) -> Result<Self, ops::OpParseError> {
+    pub fn parse(code: u16) -> Result<Self, ParseError> {
         let mut parser = Parser { code, position: 16 };
         return match parser.unsigned(4) {
             0b0001 => {
@@ -132,7 +139,7 @@ impl ops::Operation {
                 let trap_vector = parser.unsigned(8);
                 Ok(ops::Operation::OpTrap { trap_vector })
             }
-            0b1101 => Err(ops::OpParseError::IllegalOpcode { code }),
+            0b1101 => Err(ParseError::IllegalOpcode { code }),
             _ => unreachable!("all op code prefixes must be covered"),
         };
     }

@@ -1,5 +1,3 @@
-use std::ops::Range;
-
 #[derive(Clone, Copy)]
 pub struct Register(pub usize);
 
@@ -9,6 +7,7 @@ pub enum Argument {
     Immediate(u16),
 }
 
+#[derive(Clone, Copy)]
 pub enum Operation {
     OpAdd { dr: Register, sr1: Register, arg: Argument },  /* add  */
     OpAnd { dr: Register, sr1: Register, arg: Argument },  /* bitwise and */
@@ -28,8 +27,3 @@ pub enum Operation {
     OpRti,                                                 /* unused */
 }
 
-#[derive(Debug)]
-pub enum OpParseError {
-    FixedMismatch { code: u16, segment: Range<i32>, expected: u16, actual: u16 },
-    IllegalOpcode { code: u16 },
-}

@@ -1,6 +1,9 @@
 use core::fmt;
 
+use crate::io;
 use crate::ops;
+use crate::ops_parse;
+use crate::vm_spec;
 
 #[derive(Clone, Copy)]
 pub struct VmInt(pub u16);
@@ -34,25 +37,25 @@ impl core::fmt::Debug for ops::Operation {
             &Self::OpBr { n, z, p, pc_offset } => write!(f, "br(nzp=({}, {}, {}), {:?})", n, z, p, VmInt(pc_offset)),
             &Self::OpJmp { base_r } => write!(f, "jmp({:?})", base_r),
             &Self::OpJsr { pc_offset } => write!(f, "jsr({:?})", VmInt(pc_offset)),
-            Self::OpJsrr { base_r } => f.debug_struct("OpJsrr").field("base_r", base_r).finish(),
-            Self::OpLd { dr, pc_offset } => f.debug_struct("OpLd").field("dr", dr).field("pc_offset", pc_offset).finish(),
-            Self::OpLdi { dr, pc_offset } => f.debug_struct("OpLdi").field("dr", dr).field("pc_offset", pc_offset).finish(),
-            Self::OpLdr { dr, base_r, offset } => f.debug_struct("OpLdr").field("dr", dr).field("base_r", base_r).field("offset", offset).finish(),
-            Self::OpLea { dr, pc_offset } => f.debug_struct("OpLea").field("dr", dr).field("pc_offset", pc_offset).finish(),
-            Self::OpNot { dr, sr } => f.debug_struct("OpNot").field("dr", dr).field("sr", sr).finish(),
-            Self::OpSt { sr, pc_offset } => f.debug_struct("OpSt").field("sr", sr).field("pc_offset", pc_offset).finish(),
-            Self::OpSti { sr, pc_offset } => f.debug_struct("OpSti").field("sr", sr).field("pc_offset", pc_offset).finish(),
-            Self::OpStr { sr, base_r, offset } => f.debug_struct("OpStr").field("sr", sr).field("base_r", base_r).field("offset", offset).finish(),
-            Self::OpTrap { trap_vector } => f.debug_struct("OpTrap").field("trap_vector", trap_vector).finish(),
-            Self::OpRti => write!(f, "OpRti"),
+            &Self::OpJsrr { base_r } => write!(f, "jsrr({:?})", base_r),
+            &Self::OpLd { dr, pc_offset } => write!(f, "ld({:?}, {:?})", dr, VmInt(pc_offset)),
+            &Self::OpLdi { dr, pc_offset } => write!(f, "ldi({:?}, {:?})", dr, VmInt(pc_offset)),
+            &Self::OpLdr { dr, base_r, offset } => write!(f, "ldr({:?}, {:?}, {:?})", dr, base_r, VmInt(offset)),
+            &Self::OpLea { dr, pc_offset } => write!(f, "lea({:?}, {:?})", dr, pc_offset),
+            &Self::OpNot { dr, sr } => write!(f, "not({:?}, {:?})", dr, sr),
+            &Self::OpSt { sr, pc_offset } => write!(f, "st({:?}, {:?})", sr, VmInt(pc_offset)),
+            &Self::OpSti { sr, pc_offset } => write!(f, "sti({:?}, {:?})", sr, pc_offset),
+            &Self::OpStr { sr, base_r, offset } => write!(f, "str({:?}, {:?}, {:?})", sr, base_r, VmInt(offset)),
+            &Self::OpTrap { trap_vector } => write!(f, "trap({:#x})", trap_vector),
+            &Self::OpRti => write!(f, "rti"),
         }
     }
 }
 
-impl fmt::Display for ops::OpParseError {
+impl fmt::Display for ops_parse::ParseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Self::FixedMismatch { code, segment, expected, actual } => {
+        match &self {
+            &Self::FixedMismatch { code, segment, expected, actual } => {
                 write!(f, "fixed segment mismatch: expected={:0width$b}, actual={:0width$b}, op=", expected, actual, width = (segment.end - segment.start) as usize)?;
                 if segment.end < 16 {
                     write!(f, "{:0width$b}", code >> segment.end, width = (16 - segment.end) as usize)?;
@@ -63,9 +66,22 @@ impl fmt::Display for ops::OpParseError {
                 }
                 Ok(())
             }
-            Self::IllegalOpcode { code } => write!(f, "illegal op code: code={:04b}, op={:016b}", code >> 12, code),
+            &Self::IllegalOpcode { code } => write!(f, "illegal op code: code={:04b}, op={:016b}", code >> 12, code),
         }
     }
 }
 
+impl fmt::Display for io::IoError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
+impl fmt::Display for vm_spec::TickError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match &self {
+            &Self::Io(e) => write!(f, "io error: {}", e),
+            &Self::Parse(e) => write!(f, "parse error: {}", e),
+        }
+    }
+}
