@@ -26,13 +26,10 @@ impl VmMem for Vm {
     }
     fn read_mem(&self, address: u16) -> u16 {
         match address {
-            0xfe00 => {
-                if let Ok(true) = io::hasc() {
-                    1u16 << 15
-                } else {
-                    0
-                }
-            }
+            0xfe00 => match io::hasc() {
+                Ok(true) => 1u16 << 15,
+                _ => 0,
+            },
             0xfe02 => io::getc().unwrap_or(0) as u16,
             0xfe04 => panic!("read access to DSR is not implemented"),
             0xfe06 => panic!("read access to DDR is not implemented"),
@@ -56,4 +53,3 @@ impl Default for Vm {
         Self { memory: [0 as u16; MEMORY_MAX], registers: [0 as u16; REGISTERS] }
     }
 }
-
