@@ -1,8 +1,8 @@
 use crate::io;
 use crate::ops::*;
 
-const MEMORY_MAX: usize = 1 << 16;
-const REGISTERS: usize = 10;
+pub const MEMORY_MAX: usize = 1 << 16;
+pub const REGISTERS: usize = 10;
 
 pub struct Vm {
     memory:    [u16; MEMORY_MAX],
@@ -51,14 +51,9 @@ impl VmMem for Vm {
     }
 }
 
-impl Vm {
-    pub fn new<T: IntoIterator<Item = u16>>(program: T) -> Result<Self, &'static str> {
-        let mut program = program.into_iter();
-        let origin = program.next().ok_or("empty program provided")?;
-        let mut vm = Vm { memory: [0u16; MEMORY_MAX], registers: [0u16; REGISTERS] };
-        for (i, value) in program.enumerate() {
-            vm.memory[origin as usize + i] = value;
-        }
-        Ok(vm)
+impl Default for Vm {
+    fn default() -> Self {
+        Self { memory: [0 as u16; MEMORY_MAX], registers: [0 as u16; REGISTERS] }
     }
 }
+

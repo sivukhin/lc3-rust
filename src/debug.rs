@@ -85,3 +85,11 @@ impl fmt::Display for vm_spec::TickError {
         }
     }
 }
+
+impl fmt::Display for vm_spec::LoadError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self {
+            &Self::EmptyProgram => write!(f, "empty program provided"),
+        }
+    }
+}

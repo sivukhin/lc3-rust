@@ -18,6 +18,10 @@ pub enum TickError {
     Parse(ops_parse::ParseError),
 }
 
+pub enum LoadError {
+    EmptyProgram,
+}
+
 pub fn run(vm: &mut impl VmSpec) -> Result<(), TickError> {
     loop {
         match vm.tick() {
@@ -28,8 +32,8 @@ pub fn run(vm: &mut impl VmSpec) -> Result<(), TickError> {
     }
 }
 
-pub trait VmSpec {
-    fn init(&mut self);
+pub trait VmSpec where Self: Sized {
+    fn load(obj: &[u16]) -> Result<Self, LoadError>;
     fn tick(&mut self) -> Result<bool, TickError>; 
     fn tick_op(&mut self, op: Operation) -> Result<bool, io::IoError>;
     fn trap(&mut self, trap_vector: u16) -> Result<bool, io::IoError>;
@@ -46,10 +50,19 @@ fn set_cond_reg(vm_mem: &mut impl vm::VmMem, register: Register) {
     }
 }
 
-impl<T: vm::VmMem> VmSpec for T {
-    fn init(&mut self) {
-        self.write_reg(R_PC, R_PC_INIT);
-        self.write_reg(R_COND, COND_Z);
+impl<T: vm::VmMem+Default> VmSpec for T {
+    fn load(obj: &[u16]) -> Result<T, LoadError> {
+        if obj.len() == 0 {
+            return Err(LoadError::EmptyProgram);
+        }
+        let origin = obj[0];
+        let mut vm = T::default();
+        for (i, &value) in obj[1..].iter().enumerate() {
+            vm.write_mem(origin + i as u16, value);
+        }
+        vm.write_reg(R_PC, R_PC_INIT);
+        vm.write_reg(R_COND, COND_Z);
+        Ok(vm)
     }
     fn trap(&mut self, trap_vector: u16) -> Result<bool, io::IoError> {
         match trap_vector {
