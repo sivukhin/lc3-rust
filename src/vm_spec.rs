@@ -9,9 +9,9 @@ const R_PC: Register = Register(8);
 const R_COND: Register = Register(9);
 const R_PC_INIT: u16 = 0x3000;
 
-const COND_P: u16 = 1 << 0 as u16;
-const COND_Z: u16 = 1 << 1 as u16;
-const COND_N: u16 = 1 << 2 as u16;
+const COND_P: u16 = 1 << 0u16;
+const COND_Z: u16 = 1 << 1u16;
+const COND_N: u16 = 1 << 2u16;
 
 pub enum TickError {
     Io(io::IoError),
@@ -52,7 +52,7 @@ fn set_cond_reg(vm_mem: &mut impl vm::VmMem, register: Register) {
 
 impl<T: vm::VmMem+Default> VmSpec for T {
     fn load(obj: &[u16]) -> Result<T, LoadError> {
-        if obj.len() == 0 {
+        if obj.is_empty() {
             return Err(LoadError::EmptyProgram);
         }
         let origin = obj[0];
@@ -72,86 +72,86 @@ impl<T: vm::VmMem+Default> VmSpec for T {
             0x25 /* halt */ => return Ok(false),
             _ => panic!("not implemented trap vector: {:#x}", trap_vector)
         }
-        return Ok(true);
+        Ok(true)
     }
     fn tick(&mut self) -> Result<bool, TickError> {
         let pc = self.read_reg(R_PC);
-        let op = Operation::parse(self.read_mem(pc)).map_err(|e| TickError::Parse(e))?;
+        let op = Operation::parse(self.read_mem(pc)).map_err(TickError::Parse)?;
         self.write_reg(R_PC, pc.wrapping_add(1));
-        return self.tick_op(op).map_err(|e| TickError::Io(e));
+        self.tick_op(op).map_err(TickError::Io)
     }
     fn tick_op(&mut self, op: Operation) -> Result<bool, io::IoError> {
         match op {
-            Operation::OpAdd { dr, sr1, arg: Argument::Register(sr2) } => {
+            Operation::Add { dr, sr1, arg: Argument::Register(sr2) } => {
                 self.write_reg(dr, self.read_reg(sr1).wrapping_add(self.read_reg(sr2)));
                 set_cond_reg(self, dr);
             }
-            Operation::OpAdd { dr, sr1, arg: Argument::Immediate(imm) } => {
+            Operation::Add { dr, sr1, arg: Argument::Immediate(imm) } => {
                 self.write_reg(dr, self.read_reg(sr1).wrapping_add(imm));
                 set_cond_reg(self, dr);
             }
-            Operation::OpAnd { dr, sr1, arg: Argument::Register(sr2) } => {
+            Operation::And { dr, sr1, arg: Argument::Register(sr2) } => {
                 self.write_reg(dr, self.read_reg(sr1) & self.read_reg(sr2));
                 set_cond_reg(self, dr);
             }
-            Operation::OpAnd { dr, sr1, arg: Argument::Immediate(imm) } => {
+            Operation::And { dr, sr1, arg: Argument::Immediate(imm) } => {
                 self.write_reg(dr, self.read_reg(sr1) & imm);
                 set_cond_reg(self, dr);
             }
-            Operation::OpBr { n, z, p, pc_offset } => {
+            Operation::Br { n, z, p, pc_offset } => {
                 let cond = self.read_reg(R_COND);
                 if n && (COND_N & cond) != 0 || z && (COND_Z & cond) != 0 || p && (COND_P & cond) != 0 {
                     self.write_reg(R_PC, self.read_reg(R_PC).wrapping_add(pc_offset));
                 }
             }
-            Operation::OpJmp { base_r } => {
+            Operation::Jmp { base_r } => {
                 self.write_reg(R_PC, self.read_reg(base_r));
             }
-            Operation::OpJsr { pc_offset } => {
+            Operation::Jsr { pc_offset } => {
                 self.write_reg(R7, self.read_reg(R_PC));
                 self.write_reg(R_PC, self.read_reg(R_PC).wrapping_add(pc_offset));
             }
-            Operation::OpJsrr { base_r } => {
+            Operation::Jsrr { base_r } => {
                 self.write_reg(R7, self.read_reg(R_PC));
                 self.write_reg(R_PC, self.read_reg(base_r));
             }
-            Operation::OpLd { dr, pc_offset } => {
+            Operation::Ld { dr, pc_offset } => {
                 self.write_reg(dr, self.read_mem(self.read_reg(R_PC).wrapping_add(pc_offset)));
                 set_cond_reg(self, dr);
             }
-            Operation::OpLdi { dr, pc_offset } => {
+            Operation::Ldi { dr, pc_offset } => {
                 let address = self.read_mem(self.read_reg(R_PC).wrapping_add(pc_offset));
                 self.write_reg(dr, self.read_mem(address));
                 set_cond_reg(self, dr);
             }
-            Operation::OpLdr { dr, base_r, offset } => {
+            Operation::Ldr { dr, base_r, offset } => {
                 self.write_reg(dr, self.read_mem(self.read_reg(base_r).wrapping_add(offset)));
                 set_cond_reg(self, dr);
             }
-            Operation::OpLea { dr, pc_offset } => {
+            Operation::Lea { dr, pc_offset } => {
                 self.write_reg(dr, self.read_reg(R_PC).wrapping_add(pc_offset));
                 set_cond_reg(self, dr);
             }
-            Operation::OpNot { dr, sr } => {
+            Operation::Not { dr, sr } => {
                 self.write_reg(dr, !self.read_reg(sr));
                 set_cond_reg(self, dr);
             }
-            Operation::OpRti => panic!("rti operation is not implemented"),
-            Operation::OpSt { sr, pc_offset } => {
+            Operation::Rti => panic!("rti operation is not implemented"),
+            Operation::St { sr, pc_offset } => {
                 self.write_mem(self.read_reg(R_PC).wrapping_add(pc_offset), self.read_reg(sr));
             }
-            Operation::OpSti { sr, pc_offset } => {
+            Operation::Sti { sr, pc_offset } => {
                 let address = self.read_mem(self.read_reg(R_PC).wrapping_add(pc_offset));
                 self.write_mem(address, self.read_reg(sr));
             }
-            Operation::OpStr { sr, base_r, offset } => {
+            Operation::Str { sr, base_r, offset } => {
                 self.write_mem(self.read_reg(base_r).wrapping_add(offset), self.read_reg(sr));
             }
-            Operation::OpTrap { trap_vector } => {
+            Operation::Trap { trap_vector } => {
                 self.write_reg(R7, self.read_reg(R_PC));
                 return self.trap(trap_vector);
             }
         }
-        return Ok(true);
+        Ok(true)
     }
 }

@@ -4,7 +4,7 @@ use libc::termios;
 pub struct IoError(pub std::io::Error);
 
 fn last_io_error() -> IoError {
-    return IoError(std::io::Error::last_os_error());
+    IoError(std::io::Error::last_os_error())
 }
 
 pub fn term_setup() -> Result<(), IoError> {
@@ -17,17 +17,17 @@ pub fn term_setup() -> Result<(), IoError> {
     if unsafe { libc::tcsetattr(libc::STDIN_FILENO, libc::TCSANOW, &term as *const termios) } != 0 {
         return Err(last_io_error());
     }
-    return Ok(());
+    Ok(())
 }
 
 pub fn getc() -> Result<u8, IoError> {
-    let mut buf = [0 as u8];
+    let mut buf = [0u8];
     let result = unsafe { libc::read(libc::STDIN_FILENO, buf.as_mut_ptr() as *mut libc::c_void, 1) };
     if result < 0 {
         return Err(last_io_error());
     }
     assert!(result == 1);
-    return Ok(buf[0]);
+    Ok(buf[0])
 }
 
 pub fn putc(c: u8) -> Result<(), IoError> {
@@ -37,12 +37,12 @@ pub fn putc(c: u8) -> Result<(), IoError> {
         return Err(last_io_error());
     }
     assert!(result == 1);
-    return Ok(());
+    Ok(())
 }
 
 pub fn puts(buf: &[u8]) -> Result<(), IoError> {
     let mut current = buf;
-    while current.len() > 0 {
+    while !current.is_empty() {
         let result = unsafe { libc::write(libc::STDIN_FILENO, buf.as_ptr() as *const libc::c_void, buf.len()) };
         if result < 0 {
             return Err(last_io_error());
@@ -50,11 +50,11 @@ pub fn puts(buf: &[u8]) -> Result<(), IoError> {
         assert!(result > 0);
         current = &current[result as usize..];
     }
-    return Ok(());
+    Ok(())
 }
 
 pub fn hasc() -> Result<bool, IoError> {
-    return Ok(unsafe {
+    Ok(unsafe {
         let mut n: libc::c_int = 0;
         let result = libc::ioctl(libc::STDIN_FILENO, libc::FIONREAD, &mut n as *mut libc::c_int);
         if result < 0 {
@@ -62,5 +62,5 @@ pub fn hasc() -> Result<bool, IoError> {
         } else {
             n > 0
         }
-    });
+    })
 }

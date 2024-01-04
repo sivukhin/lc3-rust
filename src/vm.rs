@@ -50,6 +50,6 @@ impl VmMem for Vm {
 
 impl Default for Vm {
     fn default() -> Self {
-        Self { memory: [0 as u16; MEMORY_MAX], registers: [0 as u16; REGISTERS] }
+        Self { memory: [0u16; MEMORY_MAX], registers: [0u16; REGISTERS] }
     }
 }
