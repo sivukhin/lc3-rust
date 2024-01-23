@@ -1,7 +1,12 @@
 use libc::termios;
 
+// David: there are some really good crates for error handling: 
+// - anyhow/color-eyre for generic error (often used in binaries)
+// - thiserror for custom errors (used in libs)
+// These are so good they are consider standard practice afaik
 #[derive(Debug)]
 pub struct IoError(pub std::io::Error);
+
 
 fn last_io_error() -> IoError {
     IoError(std::io::Error::last_os_error())
@@ -9,7 +14,8 @@ fn last_io_error() -> IoError {
 
 pub fn term_setup() -> Result<(), IoError> {
     // remove canonical mode for stdin in order to disable buffering and make symbols accessible immediately
-    let mut term: termios = termios { c_iflag: 0, c_oflag: 0, c_cflag: 0, c_lflag: 0, c_line: 0, c_cc: [0 as libc::cc_t; libc::NCCS], c_ispeed: 0, c_ospeed: 0 };
+    // David: didn't look in details but compiler wasn't happy, wrong argument
+    let mut term: termios = termios { c_iflag: 0, c_oflag: 0, c_cflag: 0, c_lflag: 0, c_cc: [0 as libc::cc_t; libc::NCCS], c_ispeed: 0, c_ospeed: 0 };
     if unsafe { libc::tcgetattr(libc::STDIN_FILENO, &mut term as *mut termios) } != 0 {
         return Err(last_io_error());
     }
@@ -26,7 +32,8 @@ pub fn getc() -> Result<u8, IoError> {
     if result < 0 {
         return Err(last_io_error());
     }
-    assert!(result == 1);
+    // David: I'm assuming the aim of this is for development - debug assert won't be compiled in release build.
+    debug_assert!(result == 1);
     Ok(buf[0])
 }
 

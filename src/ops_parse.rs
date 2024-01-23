@@ -3,7 +3,7 @@ use std::ops::Range;
 use crate::ops;
 
 pub struct Parser {
-    pub code:     u16,
+    pub code: u16,
     pub position: i32,
 }
 
@@ -23,7 +23,12 @@ impl Parser {
     }
     pub fn fixed(&mut self, bit_size: i32, expected: u16) -> Result<(), ParseError> {
         let actual = self.unsigned(bit_size);
-        if actual == expected { Ok(()) } else { Err(ParseError::FixedMismatch { code: self.code, segment: self.position..self.position + bit_size, expected, actual }) }
+        // David: formatting bit odd
+        if actual == expected {
+            Ok(())
+        } else {
+            Err(ParseError::FixedMismatch { code: self.code, segment: self.position..self.position + bit_size, expected, actual })
+        }
     }
     pub fn register(&mut self) -> ops::Register {
         ops::Register(self.unsigned(3) as usize)
@@ -32,7 +37,11 @@ impl Parser {
     pub fn signed(&mut self, bit_size: i32) -> u16 {
         let value = self.unsigned(bit_size);
         let sign = value >> (bit_size - 1);
-        if sign == 1 { value | (u16::MAX << bit_size) } else { value }
+        if sign == 1 {
+            value | (u16::MAX << bit_size)
+        } else {
+            value
+        }
     }
     pub fn argument(&mut self) -> Result<ops::Argument, ParseError> {
         match self.unsigned(1) {
@@ -49,6 +58,9 @@ impl ops::Operation {
     /// spec: https://www.jmeiners.com/lc3-vm/supplies/lc3-isa.pdf
     pub fn parse(code: u16) -> Result<Self, ParseError> {
         let mut parser = Parser { code, position: 16 };
+        // David: absolute gorgeousness 
+        // That's the one thing rust is missing: ranged integer
+        // I guess in your case you could define an enum to gain exhaustiveness check 
         match parser.unsigned(4) {
             0b0001 => {
                 let dr = parser.register();

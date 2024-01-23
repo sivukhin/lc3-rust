@@ -32,25 +32,30 @@ pub fn run(vm: &mut impl VmSpec) -> Result<(), TickError> {
     }
 }
 
-pub trait VmSpec where Self: Sized {
+pub trait VmSpec
+where
+    Self: Sized,
+{
     fn load(obj: &[u16]) -> Result<Self, LoadError>;
-    fn tick(&mut self) -> Result<bool, TickError>; 
+    fn tick(&mut self) -> Result<bool, TickError>;
     fn tick_op(&mut self, op: Operation) -> Result<bool, io::IoError>;
     fn trap(&mut self, trap_vector: u16) -> Result<bool, io::IoError>;
 }
 
 fn set_cond_reg(vm_mem: &mut impl vm::VmMem, register: Register) {
     let value = vm_mem.read_reg(register);
-    if value == 0 {
-        vm_mem.write_reg(R_COND, COND_Z);
+    // David: more of a np (can also be inline in write_reg)
+    let cond = if value == 0 {
+        COND_Z
     } else if value < 1 << 15 {
-        vm_mem.write_reg(R_COND, COND_P);
+        COND_P
     } else {
-        vm_mem.write_reg(R_COND, COND_N);
-    }
+        COND_N
+    };
+    vm_mem.write_reg(R_COND, cond)
 }
 
-impl<T: vm::VmMem+Default> VmSpec for T {
+impl<T: vm::VmMem + Default> VmSpec for T {
     fn load(obj: &[u16]) -> Result<T, LoadError> {
         if obj.is_empty() {
             return Err(LoadError::EmptyProgram);
@@ -70,7 +75,8 @@ impl<T: vm::VmMem+Default> VmSpec for T {
             0x21 /* out */ => io::putc(self.read_reg(R0) as u8)?,
             0x22 /* puts */ => io::puts(&self.c_str(self.read_reg(R0)))?,
             0x25 /* halt */ => return Ok(false),
-            _ => panic!("not implemented trap vector: {:#x}", trap_vector)
+            // David: special macro just for this
+            _ => unimplemented!("not implemented trap vector: {:#x}", trap_vector)
         }
         Ok(true)
     }
@@ -81,6 +87,7 @@ impl<T: vm::VmMem+Default> VmSpec for T {
         self.tick_op(op).map_err(TickError::Io)
     }
     fn tick_op(&mut self, op: Operation) -> Result<bool, io::IoError> {
+        // David: gotta love rust for pattern matching :)
         match op {
             Operation::Add { dr, sr1, arg: Argument::Register(sr2) } => {
                 self.write_reg(dr, self.read_reg(sr1).wrapping_add(self.read_reg(sr2)));
