@@ -1,4 +1,6 @@
-use core::fmt;
+// David: You would use std unless you're on #![no_std]
+// I would also to import items directly when obvious and fully qualify when not 
+use std::fmt::{Debug, Display, Formatter};
 
 use crate::io;
 use crate::ops;
@@ -8,20 +10,21 @@ use crate::vm_spec;
 #[derive(Clone, Copy)]
 pub struct VmInt(pub u16);
 
-impl core::fmt::Debug for ops::Register {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+// David: sidenote, I would tend to colocate trait definition with their object rather than having a file dedicated to implementing traits
+impl Debug for ops::Register {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "R{}", self.0)
     }
 }
 
-impl core::fmt::Debug for VmInt {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl Debug for VmInt {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "${}", if self.0 < 1 << 15 { self.0 as i32 } else { -(!self.0 as i32) })
     }
 }
 
-impl core::fmt::Debug for ops::Argument {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl Debug for ops::Argument {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match *self {
             Self::Register(r) => write!(f, "{:?}", r),
             Self::Immediate(imm) => write!(f, "{:?}", VmInt(imm)),
@@ -29,10 +32,12 @@ impl core::fmt::Debug for ops::Argument {
     }
 }
 
-impl core::fmt::Debug for ops::Operation {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl Debug for ops::Operation {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match *self {
-            Self::Add { dr, sr1, arg } => write!(f, "add({:?}, {:?}, {:?})", dr, sr1, arg),
+            // David: this is all very rusty, one thing to make it even more readable is that format string support capture since 1.58
+            // See example below and: https://blog.rust-lang.org/2022/01/13/Rust-1.58.0.html#captured-identifiers-in-format-strings
+            Self::Add { dr, sr1, arg } => write!(f, "add({dr:?}, {sr1:?}, {arg:?})"),
             Self::And { dr, sr1, arg } => write!(f, "add({:?}, {:?}, {:?})", dr, sr1, arg),
             Self::Br { n, z, p, pc_offset } => write!(f, "br(nzp=({}, {}, {}), {:?})", n, z, p, VmInt(pc_offset)),
             Self::Jmp { base_r } => write!(f, "jmp({:?})", base_r),
@@ -52,8 +57,8 @@ impl core::fmt::Debug for ops::Operation {
     }
 }
 
-impl fmt::Display for ops_parse::ParseError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl Display for ops_parse::ParseError {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         match self {
             Self::FixedMismatch { code, segment, expected, actual } => {
                 write!(f, "fixed segment mismatch: expected={:0width$b}, actual={:0width$b}, op=", expected, actual, width = (segment.end - segment.start) as usize)?;
@@ -71,14 +76,14 @@ impl fmt::Display for ops_parse::ParseError {
     }
 }
 
-impl fmt::Display for io::IoError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl Display for io::IoError {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         write!(f, "{}", self.0)
     }
 }
 
-impl fmt::Display for vm_spec::TickError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl Display for vm_spec::TickError {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         match self {
             Self::Io(e) => write!(f, "io error: {}", e),
             Self::Parse(e) => write!(f, "parse error: {}", e),
@@ -86,8 +91,8 @@ impl fmt::Display for vm_spec::TickError {
     }
 }
 
-impl fmt::Display for vm_spec::LoadError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl Display for vm_spec::LoadError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match &self {
             &Self::EmptyProgram => write!(f, "empty program provided"),
         }

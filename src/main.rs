@@ -1,11 +1,7 @@
 use std::{env, fs};
 
-mod debug;
-mod ops;
-mod ops_parse;
-mod io;
-mod vm;
-mod vm_spec;
+// David: usually cleaner to move mods to lib.rs, this would allow you to have multiple binaries for example in bin/
+use lc3_rust::{io, vm, vm_spec};
 
 fn main() {
     io::term_setup().unwrap_or_else(|e| panic!("terminal setup failed: {}", e));

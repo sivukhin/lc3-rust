@@ -4,10 +4,27 @@ use crate::ops::*;
 pub const MEMORY_MAX: usize = 1 << 16;
 pub const REGISTERS: usize = 10;
 
+// David: not really needed here but just to mention the awesome Index(Mut) trait
+type Registers = [u16; REGISTERS];
+
+impl std::ops::Index<Register> for Registers {
+    type Output = u16;
+
+    fn index(&self, index: Register) -> &Self::Output {
+        &self[index.0]
+    }
+}
+impl std::ops::IndexMut<Register> for Registers {
+    fn index_mut(&mut self, index: Register) -> &mut Self::Output {
+        &mut self[index.0]
+    }
+}
+
 pub struct Vm {
     memory:    [u16; MEMORY_MAX],
-    registers: [u16; REGISTERS],
+    registers: Registers,
 }
+
 
 pub trait VmMem {
     fn read_reg(&self, register: Register) -> u16;
@@ -22,7 +39,8 @@ impl VmMem for Vm {
         self.registers[register.0]
     }
     fn write_reg(&mut self, register: Register, value: u16) {
-        self.registers[register.0] = value;
+        // Thanks to IndexMut trait above
+        self.registers[register] = value;
     }
     fn read_mem(&self, address: u16) -> u16 {
         match address {
